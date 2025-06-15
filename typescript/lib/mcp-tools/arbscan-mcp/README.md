@@ -33,6 +33,9 @@ pnpm run build && npx -y @modelcontextprotocol/inspector node ./dist/index.js
 
 - `getAccountBalance` – Retrieve ETH balance for an address.
 - `getTransaction` – Fetch details for a transaction hash.
-- `getTokenTransfers` – List ERC-20 token transfers involving an address.
+- `getTokenTransfers` – List ERC‑20 token transfers involving an address.
+- `getTokenBalance` – Get an ERC‑20 token balance for a wallet.
+- `getBlockNumber` – Return the latest block number.
+- `getGasPrice` – Return the current gas price in wei.
 
 Each tool accepts a `network` parameter of `mainnet` or `testnet` to choose the Arbitrum chain.
