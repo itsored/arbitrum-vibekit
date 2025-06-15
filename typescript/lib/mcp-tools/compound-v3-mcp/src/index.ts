@@ -1,9 +1,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import * as dotenv from 'dotenv';
+import { env } from './config.js';
 import { z } from 'zod';
 import { BigNumber, utils, Contract } from 'ethers';
-import { wallet, comet } from './compound.js';
+import { wallet } from './compound.js';
 import Compound from '@compound-finance/compound-js';
 
 // Add ERC20 ABI for balance and approval checks
@@ -45,33 +45,20 @@ const COMET_ABI = [
   "function getAssetInfoByAddress(address asset) view returns (tuple(uint8 offset, address asset, address priceFeed, uint64 scale, uint64 borrowCollateralFactor, uint64 liquidateCollateralFactor, uint64 liquidationFactor, uint128 supplyCap))"
 ];
 
-// Known token addresses on Arbitrum
-const KNOWN_TOKENS = {
-  // Base asset (USDC market)
-  USDC: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-  // Common collateral assets
-  WBTC: "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f"
-} as const;
+// Known token addresses map is now empty by default; users can override via env
+// or simply provide addresses in every call. USDC/WBTC on Arbitrum mainnet are
+// provided as a convenience only when CHAIN_ID === 42161.
+const KNOWN_TOKENS: Record<string, string> = {};
 
-dotenv.config();
-
-const RPC_URL = process.env.RPC_URL;
-if (!RPC_URL) {
-  console.error('RPC_URL not set in environment');
-  process.exit(1);
+if (env.CHAIN_ID === undefined || Number(env.CHAIN_ID) === 42161) {
+  Object.assign(KNOWN_TOKENS, {
+    USDC: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+    WBTC: '0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f',
+    WETH: '0x82af49447d8a07e3bd95bd0d56f35241523fbab1',
+  });
 }
 
-const COMET_ADDRESS = process.env.COMET_ADDRESS;
-if (!COMET_ADDRESS) {
-  console.error('COMET_ADDRESS not set in environment');
-  process.exit(1);
-}
-
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-if (!PRIVATE_KEY) {
-  console.error('PRIVATE_KEY not set in environment');
-  process.exit(1);
-}
+const COMET_ADDRESS = env.COMET_ADDRESS;
 
 const server = new McpServer({
   name: 'compound-v3-mcp',
@@ -147,13 +134,9 @@ server.tool(
       console.error('[supply] Resolved asset symbol:', assetSymbol);
 
       // Get the token address from our known tokens
-      let tokenAddress: string = KNOWN_TOKENS[assetSymbol as keyof typeof KNOWN_TOKENS] as string;
+      const tokenAddress = KNOWN_TOKENS[assetSymbol as keyof typeof KNOWN_TOKENS];
       if (!tokenAddress) {
-        if (assetSymbol.startsWith('0x')) {
-          tokenAddress = assetSymbol;
-        } else {
-          throw new Error(`Unsupported token ${assetSymbol}. Supported tokens: ${Object.keys(KNOWN_TOKENS).join(', ')}`);
-        }
+        throw new Error(`Unsupported token ${assetSymbol}. Supported symbols: ${Object.keys(KNOWN_TOKENS).join(', ')}`);
       }
       console.error('[supply] Token address:', tokenAddress);
 
@@ -185,11 +168,8 @@ server.tool(
         return { isError: true, content: [{ type: 'text', text: msg }] };
       }
 
-      // Get Comet address from environment
-      const cometAddress = process.env.COMET_ADDRESS;
-      if (!cometAddress) {
-        throw new Error('COMET_ADDRESS not set in environment');
-      }
+      // Use COMET_ADDRESS resolved at startup
+      const cometAddress = COMET_ADDRESS;
       console.error('[supply] Comet address:', cometAddress);
 
       // Check and handle approval if needed
@@ -232,10 +212,10 @@ server.tool(
       const assetSymbol = resolveAssetSymbol(params.asset);
       console.error('[borrow] Resolved asset symbol:', assetSymbol);
 
-      // Get the token address from our known tokens
+      // Resolve token address either from KNOWN_TOKENS or direct address input
       const tokenAddress = KNOWN_TOKENS[assetSymbol as keyof typeof KNOWN_TOKENS];
       if (!tokenAddress) {
-        throw new Error(`Unsupported token ${assetSymbol}. Supported tokens: ${Object.keys(KNOWN_TOKENS).join(', ')}`);
+        throw new Error(`Unsupported token ${assetSymbol}. Supported symbols: ${Object.keys(KNOWN_TOKENS).join(', ')}`);
       }
       console.error('[borrow] Token address:', tokenAddress);
 
@@ -300,13 +280,9 @@ server.tool(
       console.error('[repay] Resolved asset symbol:', assetSymbol);
 
       // Resolve token address (symbol or address)
-      let tokenAddress: string = KNOWN_TOKENS[assetSymbol as keyof typeof KNOWN_TOKENS] as string;
+      const tokenAddress = KNOWN_TOKENS[assetSymbol as keyof typeof KNOWN_TOKENS];
       if (!tokenAddress) {
-        if (assetSymbol.startsWith('0x')) {
-          tokenAddress = assetSymbol;
-        } else {
-          throw new Error(`Unsupported token ${assetSymbol}. Supported tokens: ${Object.keys(KNOWN_TOKENS).join(', ')}`);
-        }
+        throw new Error(`Unsupported token ${assetSymbol}. Supported symbols: ${Object.keys(KNOWN_TOKENS).join(', ')}`);
       }
       console.error('[repay] Token address:', tokenAddress);
 
