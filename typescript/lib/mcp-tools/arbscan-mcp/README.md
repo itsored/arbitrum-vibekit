@@ -1,6 +1,6 @@
 # Arbiscan MCP Server
 
-This package exposes a simple Model Context Protocol (MCP) server that wraps the [Arbiscan](https://arbiscan.io/) API. It allows Vibekit agents to query on-chain data from Arbitrum One (mainnet) and Arbitrum Sepolia (testnet).
+This package exposes a  Model Context Protocol (MCP) server that wraps the [Arbiscan](https://arbiscan.io/) API. It allows Vibekit agents to query on-chain data from Arbitrum One (mainnet) and Arbitrum Sepolia (testnet).
 
 ## Environment Variables
 
